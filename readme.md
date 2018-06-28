@@ -18,7 +18,7 @@ Discussion thread about this plugin: https://www.domoticz.com/forum/viewtopic.ph
 	* Enter all fields as desired
 	* Enter just created client id and client secret into hardware parameters
 	* Go to 'edit setting' and 'http://localhost' as redirect URI
-	* In your webbrowser, navigate to this url: https://accounts.spotify.com/authorize?client_id=[YOUR CLIENT_ID]&redirect_uri=http://localhost&response_type=code&scope=user-read-playback-state user-modify-playback-state
+	* In your webbrowser, navigate to this url: https://accounts.spotify.com/authorize?client_id=[YOURCLIENT_ID]&redirect_uri=http://localhost&response_type=code&scope=user-read-playback-state+user-modify-playback-state
 	* If all go's well, you are being redirect to localhost returning a 404, with a code in the query parameters, copy this code into the hardware parameters
 	* Refresh interval spotify devices: devices using spotify connect go offline and offline, at refresh devices are being updated on de domoticz switch selector
 * Add
