@@ -47,8 +47,7 @@ import json
 import time
 
 #DEFINES
-SPOTIFYTXT = 1
-SPOTIFYDEVICES = 2
+SPOTIFYDEVICES = 1
 
 
 #############################################################################
@@ -58,12 +57,14 @@ class BasePlugin:
     def __init__(self):
         self.spotifyToken = {"access_token":"",
                              "refresh_token":"",
-                             "retrievaldate":""
+                             "retrievaldate":"",
+                             "searchTxt":""
                              }
         self.tokenexpired = 3600
         self.spotifyAccountUrl = "https://accounts.spotify.com/api/token"
         self.spotifyApiUrl = "https://api.spotify.com/v1"
         self.heartbeatCounter = 1
+        self.blError = False
         self.blDebug = False
         
 
@@ -75,16 +76,16 @@ class BasePlugin:
             self.blDebug = True
 
         if not self.getUserVar():
+            self.blError = True
             return None
             
 
         for key, value in self.spotifyToken.items():
-            if value == '':
+            if key != 'searchTxt' and value == '':
                 Domoticz.Log("Not all spotify token variables are available, let's get it")
-                if Parameters["Mode4"] == "":
-                    Domoticz.Log('Plugin needs a code from spotify, see installation manual')
+                if not self.spotAuthoriseCode(Parameters["Mode4"]):
+                    self.blError = True
                     return None
-                self.spotAuthoriseCode(Parameters["Mode4"])
                 break
 
         self.checkDevices()
@@ -93,13 +94,7 @@ class BasePlugin:
 
 
     def checkDevices(self):
-        Domoticz.Log("Checking if Devices exist")
-
-        if SPOTIFYTXT not in Devices:
-            Domoticz.Log("Text input device does not exist, creating device")
-            Domoticz.Device(Name="Spotify input text", Unit=SPOTIFYTXT, TypeName="Text").Create()
-
-
+        Domoticz.Log("Checking if devices exist")
 
         spotDevices = self.spotDevices()
         
@@ -184,7 +179,7 @@ class BasePlugin:
         response = urllib.request.urlopen(req)
 
         strResponse = response.read().decode('utf-8')
-        return loadJsonFromString(strResponse)
+        return json.loads(strResponse)
             
         
 
@@ -245,7 +240,7 @@ class BasePlugin:
             if self.blDebug:
                 Domoticz.Log('Spotify response accestoken based on refresh: ' + str(strResponse))
                 
-            jsonResponse = loadJsonFromString(strResponse)
+            jsonResponse = json.loads(strResponse)
 
             self.saveSpotifyToken(jsonResponse)
         except:
@@ -283,10 +278,12 @@ class BasePlugin:
                 strResponse= response.read().decode('utf-8')
                 if self.blDebug:
                     Domoticz.Log('Spotify tokens based on authorisation code: ' + str(strResponse))
-                jsonResponse = loadJsonFromString(strResponse)
+                jsonResponse = json.loads(strResponse)
                     
 
                 self.saveSpotifyToken(jsonResponse)
+
+                return True
                    
             except:
                Domoticz.Error('Bad request to spotify, code entered in hardware parameters could one be used once. Please get a new one')
@@ -308,17 +305,37 @@ class BasePlugin:
             Domoticz.Error('Seems something with wrong with token response from spotify')
 
     def spotSearch(self, input, type):
+
         
-        url = self.spotifyApiUrl + "/search?q=" + input + "&type=" + type + "&market=NL&limit=10"
+        url = self.spotifyApiUrl + "/search?q=%s&type=%s&market=NL&limit=10" % (urllib.parse.quote(input), type)
+        if self.blDebug:
+            Domoticz.Log('Spotify search url: ' + str(url))
+            
         headers = self.spotGetBearerHeader()
 
         req = urllib.request.Request(url, headers=headers)
         response = urllib.request.urlopen(req)
 
-        jsonResponse = loadJsonFromString(response.read().decode('utf-8'))
-        returnString = jsonResponse['%ss' % type]['items'][0]['uri']
+        jsonResponse = json.loads(response.read().decode('utf-8'))
+        foundItems = jsonResponse['%ss' % type]['items']
 
-        return returnString
+        if self.blDebug:
+            Domoticz.Log('First result of spotify search: ' + str(foundItems[0]))
+            
+        rsltString = 'Found ' + type + ' ' + foundItems[0]['name']
+        if type == 'track':
+            tracks = []
+            for track in foundItems:
+                tracks.append(track['uri'])
+            returnData = {"uris": tracks}
+        else:
+            returnData = {"context_uri": foundItems[0]['uri']}
+
+        if type  == 'album' or type == 'track':
+            rsltString += ' by ' + foundItems[0]['artists'][0]['name']
+            
+        Domoticz.Log(rsltString) 
+        return returnData
     
     def spotPlay(self, input, deviceLvl):
 
@@ -331,8 +348,7 @@ class BasePlugin:
             url = self.spotifyApiUrl + "/me/player/play?device_id=" + device  
             headers = self.spotGetBearerHeader()
 
-            data = {"context_uri":input}
-            data = json.dumps(data).encode('utf8')
+            data = json.dumps(input).encode('utf8')
 
 
             req = urllib.request.Request(url, headers=headers, data=data, method='PUT')
@@ -351,19 +367,23 @@ class BasePlugin:
         
 
     def onHeartbeat(self):
-        
-        if Parameters["Mode5"] != "0" and self.heartbeatCounter == int(Parameters["Mode5"]):
-            Domoticz.Log('Heartbeat')
-            self.updateDeviceSelector()
-            self.heartbeatCounter = 1
-        else:
-            self.heartbeatCounter += 1
-            
-        return True
+
+        if not self.blError:
+            if Parameters["Mode5"] != "0" and self.heartbeatCounter == int(Parameters["Mode5"]):
+                if blDebug:
+                    Domoticz.Log('Heartbeat')
+                self.updateDeviceSelector()
+                self.heartbeatCounter = 1
+            else:
+                self.heartbeatCounter += 1
+                
+            return True
 
     def onCommand(self, Unit, Command, Level, Hue):
 
-        searchString = Devices[SPOTIFYTXT].sValue
+        variables = DomoticzAPI({'type':'command','param':'getuservariables'})
+        searchVariable = next((item for item in variables["result"] if item["Name"] == Parameters["Name"] + '-searchTxt'))
+        searchString = searchVariable['Value']
         Domoticz.Log('Looking for ' + searchString)
         searchResult = None
 
@@ -371,13 +391,15 @@ class BasePlugin:
             for type in ['artist','track','playlist','album']:
                 if type in searchString:
                     strippedSearch = searchString.replace(type,'').lstrip()
+                    if self.blDebug:
+                        Domoticz.Log('Search type: ' + type)
+                        Domoticz.Log('Search string: ' + strippedSearch)
                     searchResult = self.spotSearch(strippedSearch,type)
                     break
 
         if not searchResult:
             Domoticz.Error("No correct type found in search string, use either artist, track, playlist or album")
         else:
-            Domoticz.Log('Found: ' + searchResult)
             self.spotPlay(searchResult,str(Level))
 
 _plugin = BasePlugin()
@@ -412,7 +434,7 @@ def DomoticzAPI(APICall):
         response = urllib.request.urlopen(req)
 
         if response.status == 200:
-            resultJson = loadJsonFromString(response.read().decode('utf-8'))
+            resultJson = json.loads(response.read().decode('utf-8'))
             if resultJson["status"] != "OK":
                 Domoticz.Error("Domoticz API returned an error: status = {}".format(resultJson["status"]))
                 resultJson = None
@@ -429,7 +451,3 @@ def DomoticzAPI(APICall):
 #############################################################################
 #                       Device specific functions                           #
 #############################################################################
-
-def loadJsonFromString(stringInput):
-    response = stringInput.replace("'", "\"")
-    return json.loads(response)
