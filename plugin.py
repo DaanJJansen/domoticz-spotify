@@ -104,7 +104,7 @@ class BasePlugin:
             strSelectorNames = 'Off'
             dictOptions = self.buildDeviceSelector(strSelectorNames)
             
-            Domoticz.Device(Name="Spotify devices", Unit=SPOTIFYDEVICES, TypeName="Selector Switch", Switchtype=18, Options = dictOptions).Create()
+            Domoticz.Device(Name="devices", Unit=SPOTIFYDEVICES, TypeName="Selector Switch", Switchtype=18, Options = dictOptions).Create()
         else:
             self.updateDeviceSelector()
 
