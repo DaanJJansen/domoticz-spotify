@@ -24,10 +24,10 @@ Discussion thread about this plugin: https://www.domoticz.com/forum/viewtopic.ph
 
 ## Usage:
 * Update user variable [name]-searchTxt with the query parameter by using the type of search and the search string. The following types could be used:
-** artist -> find artist, eg searchTxt: 'artist coldplay' This will play the top tracks of Coldplay
-** track --> find song, eg searchTxt: 'track song 2'. Will play 10 tracks which matches with your search string
-** album --> find album, eg searchTxt: 'album Ten'. Will play album 10 by Pearl Jam
-** playlist --> find playlist, eg searchTxt: 'playlist discover weekly'. Will play the complete playlist for you. 
+	* artist -> find artist, eg searchTxt: 'artist coldplay' This will play the top tracks of Coldplay
+	* track --> find song, eg searchTxt: 'track song 2'. Will play 10 tracks which matches with your search string
+	* album --> find album, eg searchTxt: 'album Ten'. Will play album 10 by Pearl Jam
+	* playlist --> find playlist, eg searchTxt: 'playlist discover weekly'. Will play the complete playlist for you. 
 
 ## History:
 **version 0.1**
