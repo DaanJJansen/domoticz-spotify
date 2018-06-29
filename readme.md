@@ -1,7 +1,7 @@
 # Domoticz Spotify
 Python plugin for Domoticz: Control spotify using domoticz 
 See http://www.domoticz.com for more information on the platform.  
-Discussion thread about this plugin: https://www.domoticz.com/forum/viewtopic.php?f=xxxx.
+Discussion thread about this plugin: http://www.domoticz.com/forum/viewtopic.php?f=65&t=24020
 
 ## Requirements:
 * Spotify premium account
