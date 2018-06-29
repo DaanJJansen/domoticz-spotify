@@ -94,9 +94,7 @@ class BasePlugin:
 
 
     def checkDevices(self):
-        Domoticz.Log("Checking if devices exist")
-
-        spotDevices = self.spotDevices()
+        Domoticz.Log("Checking if devices exis")
         
         if SPOTIFYDEVICES not in Devices:
             Domoticz.Log("Spotify devices selector does not exist, creating device")
@@ -172,14 +170,20 @@ class BasePlugin:
         
 
     def spotDevices(self):
-        url = self.spotifyApiUrl + '/me/player/devices'
-        headers = self.spotGetBearerHeader()
+        try:
+            url = self.spotifyApiUrl + '/me/player/devices'
+            headers = self.spotGetBearerHeader()
 
-        req = urllib.request.Request(url, headers=headers)
-        response = urllib.request.urlopen(req)
+            req = urllib.request.Request(url, headers=headers)
+            response = urllib.request.urlopen(req)
 
-        strResponse = response.read().decode('utf-8')
-        return json.loads(strResponse)
+            strResponse = response.read().decode('utf-8')
+            return json.loads(strResponse)
+        
+        except urllib.error.URLError as err:
+            Domoticz.Error("Unkown error: code: %s, msg: %s" % (str(err.code), str(err.args)))
+            return None
+            
             
         
 
@@ -367,17 +371,17 @@ class BasePlugin:
         
 
     def onHeartbeat(self):
-
         if not self.blError:
             if Parameters["Mode5"] != "0" and self.heartbeatCounter == int(Parameters["Mode5"]):
-                if blDebug:
+                if self.blDebug:
                     Domoticz.Log('Heartbeat')
                 self.updateDeviceSelector()
                 self.heartbeatCounter = 1
             else:
-                self.heartbeatCounter += 1
-                
+                self.heartbeatCounter += 1    
             return True
+
+            
 
     def onCommand(self, Unit, Command, Level, Hue):
 
@@ -451,3 +455,4 @@ def DomoticzAPI(APICall):
 #############################################################################
 #                       Device specific functions                           #
 #############################################################################
+
