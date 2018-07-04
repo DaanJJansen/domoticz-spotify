@@ -35,8 +35,12 @@
 
 try:
     import Domoticz
+    local = False
 except ImportError:
+    local = True
     import fakeDomoticz as Domoticz
+    from fakeDomoticz import Devices
+    from fakeDomoticz import Parameters
 
 
 import urllib.request
@@ -112,7 +116,8 @@ class BasePlugin:
         strSelectorNames = Devices[SPOTIFYDEVICES].Options['LevelNames']
         dictOptions = self.buildDeviceSelector(strSelectorNames)
 
-        Devices[SPOTIFYDEVICES].Update(nValue=Devices[SPOTIFYDEVICES].nValue, sValue=Devices[SPOTIFYDEVICES].sValue, Options=dictOptions)
+        if dictOptions != Devices[SPOTIFYDEVICES].Options:
+            Devices[SPOTIFYDEVICES].Update(nValue=Devices[SPOTIFYDEVICES].nValue, sValue=Devices[SPOTIFYDEVICES].sValue, Options=dictOptions)
         
             
     def buildDeviceSelector(self, strSelectorNames):
@@ -199,6 +204,8 @@ class BasePlugin:
                         try:
                             result = next((item for item in variables["result"] if item["Name"] == intVarName))
                             self.spotifyToken[intVar] = result['Value']
+                            if self.blDebug:
+                                Domoticz.Log(str(result))
                         except:
                             missingVar.append(intVar)
 
@@ -257,6 +264,8 @@ class BasePlugin:
         login = client_id + ':' + client_secret
         base64string = base64.b64encode(login.encode())
         header = {'Authorization': 'Basic ' + base64string.decode('ascii')}
+        if self.blDebug:
+            Domoticz.Log('For basic headers using client_id: %s, client_secret: %s' % (client_id, client_secret))
 
         return header
         
@@ -272,8 +281,13 @@ class BasePlugin:
             data = {'grant_type':'authorization_code',
                     'code':code,
                     'redirect_uri':'http://localhost'}
+            if self.blDebug:
+                Domoticz.Log('Getting tokens using data: %s' % (data))
             data = urllib.parse.urlencode(data)
-            headers = headers = self.returnSpotifyBasicHeader()
+            
+            headers = self.returnSpotifyBasicHeader()
+            if self.blDebug:
+                Domoticz.Log('Getting tokens using header: %s' % (headers))
 
             try:
                 req = urllib.request.Request(url, data.encode('ascii'), headers)
@@ -288,9 +302,12 @@ class BasePlugin:
                 self.saveSpotifyToken(jsonResponse)
 
                 return True
-                   
-            except:
-               Domoticz.Error('Bad request to spotify, code entered in hardware parameters could one be used once. Please get a new one')
+            
+            except urllib.error.HTTPError as err:
+                errmsg = "Error occured in request for getting acces_tokens from Spotify, error code: %s, reason: %s." %(err.code,err.reason)
+                if err.code == 400:
+                    errmsg += " Seems either client_id, client_secret or code is incorred. Please note that the code received from Spotify could only be used once. Please get a new one from spotify."
+                Domoticz.Error(errmsg)
             
         except Exception as error:
             Domoticz.Error(error)
@@ -384,6 +401,9 @@ class BasePlugin:
             
 
     def onCommand(self, Unit, Command, Level, Hue):
+        if (self.blDebug ==  True):
+            Domoticz.Log("Spotify: onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
+            Domoticz.Log("nValue=%s, sValue=%s" % (str(Devices[SPOTIFYDEVICES].nValue), str(Devices[SPOTIFYDEVICES].sValue)))
 
         variables = DomoticzAPI({'type':'command','param':'getuservariables'})
         searchVariable = next((item for item in variables["result"] if item["Name"] == Parameters["Name"] + '-searchTxt'))
@@ -453,6 +473,13 @@ def DomoticzAPI(APICall):
 
 
 #############################################################################
-#                       Device specific functions                           #
+#                       Local test helpers                                  #
 #############################################################################
+
+if local:
+    onStart()
+
+    #onHeartbeat()
+
+    #onCommand(2,'Set Level',20,'')
 
