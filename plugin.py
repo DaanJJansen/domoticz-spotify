@@ -79,6 +79,12 @@ class BasePlugin:
         if Parameters["Mode6"] == "Debug":
             self.blDebug = True
 
+        for var in ['Mode2','Mode3','Mode4']:
+            if Parameters[var] == "":
+                Domoticz.Error('No client_id, client_secret and/or code is set in hardware parameters')
+                self.blError = True
+                return None
+
         if not self.getUserVar():
             self.blError = True
             return None
@@ -87,7 +93,7 @@ class BasePlugin:
         for key, value in self.spotifyToken.items():
             if key != 'searchTxt' and value == '':
                 Domoticz.Log("Not all spotify token variables are available, let's get it")
-                if not self.spotAuthoriseCode(Parameters["Mode4"]):
+                if not self.spotAuthoriseCode():
                     self.blError = True
                     return None
                 break
@@ -193,8 +199,9 @@ class BasePlugin:
         
 
     def getUserVar(self):
-        variables = DomoticzAPI({'type':'command','param':'getuservariables'})
         try:
+            variables = DomoticzAPI({'type':'command','param':'getuservariables'}, self.blDebug)
+        
             if variables:
                 valuestring = ""
                 missingVar = []
@@ -207,16 +214,17 @@ class BasePlugin:
                             if self.blDebug:
                                 Domoticz.Log(str(result))
                         except:
-                            missingVar.append(intVar)
-
-
-                    if len(missingVar) > 0:
-                        strMissingVar = ','.join(missingVar)
-                        Domoticz.Log("User Variable {} does not exist. Creation requested".format(strMissingVar))
-                        for variable in missingVar:
-                            DomoticzAPI({"type":"command","param":"saveuservariable","vname":Parameters["Name"] + '-' + variable,"vtype":"2","vvalue":""})
+                            missingVar.append(intVar)   
                 else:
-                    raise Exception("Cannot read the uservariable holding the persistent variables")
+                    for intVar in self.spotifyToken:
+                        print('test' + intVar)
+                        missingVar.append(intVar)
+                        
+                if len(missingVar) > 0:
+                    strMissingVar = ','.join(missingVar)
+                    Domoticz.Log("User Variable {} does not exist. Creation requested".format(strMissingVar))
+                    for variable in missingVar:
+                        DomoticzAPI({"type":"command","param":"saveuservariable","vname":Parameters["Name"] + '-' + variable,"vtype":"2","vvalue":""}, self.blDebug)
                 
                 return True
             else:
@@ -229,14 +237,16 @@ class BasePlugin:
             
 
     def saveUserVar(self):
-
-        for intVar in self.spotifyToken:
-            intVarName = Parameters["Name"] + '-' + intVar
-            DomoticzAPI({"type":"command","param":"updateuservariable","vname":intVarName,"vtype":"2","vvalue":str(self.spotifyToken[intVar])})
+        try:
+            for intVar in self.spotifyToken:
+                intVarName = Parameters["Name"] + '-' + intVar
+                DomoticzAPI({"type":"command","param":"updateuservariable","vname":intVarName,"vtype":"2","vvalue":str(self.spotifyToken[intVar])}, self.blDebug)
+        except Exception as error:
+            Domoticz.Error(str(error))
 
     def spotGetRefreshToken(self):
         try:
-
+            
             url = self.spotifyAccountUrl
             headers = self.returnSpotifyBasicHeader()
 
@@ -272,11 +282,9 @@ class BasePlugin:
     
    
 
-    def spotAuthoriseCode(self, code):
+    def spotAuthoriseCode(self):
         try:
-            if Parameters["Mode2"] == "" or Parameters["Mode3"] == "":
-                raise Exception('No client_id and/or client_secret is set in hardware parameters')
-
+            code = Parameters["Mode4"]
             url = self.spotifyAccountUrl
             data = {'grant_type':'authorization_code',
                     'code':code,
@@ -306,7 +314,7 @@ class BasePlugin:
             except urllib.error.HTTPError as err:
                 errmsg = "Error occured in request for getting acces_tokens from Spotify, error code: %s, reason: %s." %(err.code,err.reason)
                 if err.code == 400:
-                    errmsg += " Seems either client_id, client_secret or code is incorred. Please note that the code received from Spotify could only be used once. Please get a new one from spotify."
+                    errmsg += " Seems either client_id, client_secret or code is incorrect. Please note that the code received from Spotify could only be used once. Please get a new one from spotify."
                 Domoticz.Error(errmsg)
             
         except Exception as error:
@@ -405,7 +413,11 @@ class BasePlugin:
             Domoticz.Log("Spotify: onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
             Domoticz.Log("nValue=%s, sValue=%s" % (str(Devices[SPOTIFYDEVICES].nValue), str(Devices[SPOTIFYDEVICES].sValue)))
 
-        variables = DomoticzAPI({'type':'command','param':'getuservariables'})
+        try:
+            variables = DomoticzAPI({'type':'command','param':'getuservariables'}, self.blDebug)
+        except Exception as error:
+            Domoticz.Error(error)
+    
         searchVariable = next((item for item in variables["result"] if item["Name"] == Parameters["Name"] + '-searchTxt'))
         searchString = searchVariable['Value']
         Domoticz.Log('Looking for ' + searchString)
@@ -443,10 +455,11 @@ def onCommand(Unit, Command, Level, Hue):
 #############################################################################
 
 
-def DomoticzAPI(APICall):
+def DomoticzAPI(APICall, blDebug):
     resultJson = None
     url = "http://{}:{}/json.htm?{}".format(Parameters["Address"], Parameters["Port"], urllib.parse.urlencode(APICall, safe="&="))
-    #Domoticz.Debug("Calling domoticz API: {}".format(url))
+    if blDebug:
+        Domoticz.Log("Calling domoticz API: {}".format(url))
     try:
         req = urllib.request.Request(url)
         if Parameters["Username"] != "":
@@ -460,13 +473,12 @@ def DomoticzAPI(APICall):
         if response.status == 200:
             resultJson = json.loads(response.read().decode('utf-8'))
             if resultJson["status"] != "OK":
-                Domoticz.Error("Domoticz API returned an error: status = {}".format(resultJson["status"]))
-                resultJson = None
+                raise Exception("Domoticz API returned an error: status = {}".format(resultJson["status"]))
         else:
-            Domoticz.Error("Domoticz API: http error = {}".format(response.status))
+            raise Exception("Domoticz API: http error = {}".format(response.status))
     except:
-        Domoticz.Error("Error calling '{}'".format(url))
-        return None
+        raise Exception("Error calling '{}'".format(url))
+    
     return resultJson
 
 
