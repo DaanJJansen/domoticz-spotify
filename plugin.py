@@ -6,7 +6,7 @@
 #
 
 """
-<plugin key="Spotify" name="Spotify Plugin" author="djj" version="0.1" wikilink="https://github.com/DaanJJansen/domoticz-spotify" externallink="https://api.spotify.com">
+<plugin key="Spotify" name="Spotify Plugin" author="djj" version="0.11" wikilink="https://github.com/DaanJJansen/domoticz-spotify" externallink="https://api.spotify.com">
     <params>
         <param field="Address" label="Domoticz IP Address" width="200px" required="true" default="localhost"/>
         <param field="Port" label="Port" width="40px" required="true" default="8080"/>
