@@ -217,7 +217,6 @@ class BasePlugin:
                             missingVar.append(intVar)   
                 else:
                     for intVar in self.spotifyToken:
-                        print('test' + intVar)
                         missingVar.append(intVar)
                         
                 if len(missingVar) > 0:
