@@ -6,16 +6,16 @@
 #
 
 """
-<plugin key="Spotify" name="Spotify Plugin" author="djj" version="0.11" wikilink="https://github.com/DaanJJansen/domoticz-spotify" externallink="https://api.spotify.com">
+<plugin key="Spotify" name="Spotify Plugin" author="djj" version="0.2" wikilink="https://github.com/DaanJJansen/domoticz-spotify" externallink="https://api.spotify.com">
     <params>
         <param field="Address" label="Domoticz IP Address" width="200px" required="true" default="localhost"/>
         <param field="Port" label="Port" width="40px" required="true" default="8080"/>
-        <param field="Mode2" label="Client ID" width="200px" required="true" default=""/>
-        <param field="Mode3" label="Client Secret" width="200px" required="true" default=""/>
-        <param field="Mode4" label="Code" width="200px" required="true" default=""/>
-        <param field="Mode5" label="Refresh interval spotify devices" width="100px" required="true">
+        <param field="Mode1" label="Client ID" width="200px" required="true" default=""/>
+        <param field="Mode2" label="Client Secret" width="200px" required="true" default=""/>
+        <param field="Mode3" label="Code" width="400px" required="true" default=""/>
+        <param field="Mode5" label="Poll intervall" width="100px" required="true">
             <options>
-                <option label="N/A - Only at start up" value=0/>
+                <option label="None" value=0/>
                 <option label="30 seconds" value=1/>
                 <option label="5 minutes" value=10 default="true"/>
                 <option label="15 minutes" value=30/>
@@ -61,13 +61,14 @@ class BasePlugin:
     def __init__(self):
         self.spotifyToken = {"access_token":"",
                              "refresh_token":"",
-                             "retrievaldate":"",
-                             "searchTxt":""
+                             "retrievaldate":""
                              }
+        self.spotifySearchParam = ["searchTxt"]
         self.tokenexpired = 3600
+        self.spotArrDevices = {}
         self.spotifyAccountUrl = "https://accounts.spotify.com/api/token"
         self.spotifyApiUrl = "https://api.spotify.com/v1"
-        self.heartbeatCounter = 1
+        self.heartbeatCounterPoll = 1
         self.blError = False
         self.blDebug = False
         
@@ -79,7 +80,7 @@ class BasePlugin:
         if Parameters["Mode6"] == "Debug":
             self.blDebug = True
 
-        for var in ['Mode2','Mode3','Mode4']:
+        for var in ['Mode1','Mode2','Mode3']:
             if Parameters[var] == "":
                 Domoticz.Error('No client_id, client_secret and/or code is set in hardware parameters')
                 self.blError = True
@@ -91,7 +92,7 @@ class BasePlugin:
             
 
         for key, value in self.spotifyToken.items():
-            if key != 'searchTxt' and value == '':
+            if value == '':
                 Domoticz.Log("Not all spotify token variables are available, let's get it")
                 if not self.spotAuthoriseCode():
                     self.blError = True
@@ -112,7 +113,7 @@ class BasePlugin:
             strSelectorNames = 'Off'
             dictOptions = self.buildDeviceSelector(strSelectorNames)
             
-            Domoticz.Device(Name="devices", Unit=SPOTIFYDEVICES, TypeName="Selector Switch", Switchtype=18, Options = dictOptions).Create()
+            Domoticz.Device(Name="devices", Unit=SPOTIFYDEVICES, Used=1, TypeName="Selector Switch", Switchtype=18, Options = dictOptions, Image=8).Create()
         else:
             self.updateDeviceSelector()
 
@@ -133,7 +134,7 @@ class BasePlugin:
             Domoticz.Log('JSON Returned from spotify listed available devices: ' + str(spotDevices))
             
         strSelectorActions = ''
-        self.spotArrDevices = {}
+        
 
         lstSelectorNames=strSelectorNames.split("|")
         
@@ -160,7 +161,7 @@ class BasePlugin:
 
         dictOptions = {"LevelActions": strSelectorActions,
                        "LevelNames": strSelectorNames,
-                       "LevelOffHidden": "true",
+                       "LevelOffHidden": "false",
                        "SelectorStyle": "1"}
 
         return dictOptions
@@ -205,18 +206,20 @@ class BasePlugin:
             if variables:
                 valuestring = ""
                 missingVar = []
+                lstDomoticzVariables = list(self.spotifyToken.keys()) + self.spotifySearchParam
                 if "result" in variables:
-                    for intVar in self.spotifyToken:
+                    for intVar in lstDomoticzVariables:
                         intVarName = Parameters["Name"] + '-' + intVar
                         try:
                             result = next((item for item in variables["result"] if item["Name"] == intVarName))
-                            self.spotifyToken[intVar] = result['Value']
+                            if intVar in self.spotifyToken:
+                                self.spotifyToken[intVar] = result['Value']
                             if self.blDebug:
                                 Domoticz.Log(str(result))
                         except:
                             missingVar.append(intVar)   
                 else:
-                    for intVar in self.spotifyToken:
+                    for intVar in lstDomoticzVariables:
                         missingVar.append(intVar)
                         
                 if len(missingVar) > 0:
@@ -268,8 +271,8 @@ class BasePlugin:
 
     def returnSpotifyBasicHeader(self):
 
-        client_id = Parameters["Mode2"] 
-        client_secret = Parameters["Mode3"] 
+        client_id = Parameters["Mode1"] 
+        client_secret = Parameters["Mode2"] 
         login = client_id + ':' + client_secret
         base64string = base64.b64encode(login.encode())
         header = {'Authorization': 'Basic ' + base64string.decode('ascii')}
@@ -283,7 +286,7 @@ class BasePlugin:
 
     def spotAuthoriseCode(self):
         try:
-            code = Parameters["Mode4"]
+            code = Parameters["Mode3"]
             url = self.spotifyAccountUrl
             data = {'grant_type':'authorization_code',
                     'code':code,
@@ -364,13 +367,53 @@ class BasePlugin:
             
         Domoticz.Log(rsltString) 
         return returnData
+
+    def spotPause(self):
+        try:
+
+            url = self.spotifyApiUrl + "/me/player/pause"
+            headers = self.spotGetBearerHeader()
+
+            req = urllib.request.Request(url, headers=headers, method='PUT')
+            response = urllib.request.urlopen(req)
+            Domoticz.Log("Succesfully paused track")
+
+        except urllib.error.HTTPError as err:
+            if err.code == 403:
+                Domoticz.Error("User non premium")
+            elif err.code == 400:
+                Domoticz.Error("Device id not found")
+            else:
+                Domoticz.Error("Unkown error, msg: " + str(err.msg))
+
+    def spotCurrent(self):
+        try:
+
+            url = self.spotifyApiUrl + "/me/player"
+            headers = self.spotGetBearerHeader()
+
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            response = urllib.request.urlopen(req)
+            
+
+            if self.blDebug == True:
+                Domoticz.Log("Succesfully retrieved current playing state")
+                Domoticz.Log('Retrieved current playing state having code %s' % (response.code))
+
+
+            return response
+
+        except urllib.error.HTTPError as err:
+            Domoticz.Error("Unkown error %s, msg: %s" % (err.code, err.msg))
     
     def spotPlay(self, input, deviceLvl):
 
         try:
 
             if deviceLvl not in self.spotArrDevices:
-                raise urllib.error.HTTPError(url='',msg='',hdrs='', fp='', code=404)
+                self.updateDeviceSelector()
+                if deviceLvl not in self.spotArrDevices:
+                    raise urllib.error.HTTPError(url='',msg='',hdrs='', fp='', code=404)
             
             device = self.spotArrDevices[deviceLvl]
             url = self.spotifyApiUrl + "/me/player/play?device_id=" + device  
@@ -381,6 +424,7 @@ class BasePlugin:
 
             req = urllib.request.Request(url, headers=headers, data=data, method='PUT')
             response = urllib.request.urlopen(req)
+            self.updateDomoticzDevice(SPOTIFYDEVICES, 1, str(deviceLvl))
             Domoticz.Log("Succesfully started playback")
 
         except urllib.error.HTTPError as err:
@@ -396,14 +440,49 @@ class BasePlugin:
 
     def onHeartbeat(self):
         if not self.blError:
-            if Parameters["Mode5"] != "0" and self.heartbeatCounter == int(Parameters["Mode5"]):
+            if Parameters["Mode5"] != "0" and self.heartbeatCounterPoll == int(Parameters["Mode5"]):
                 if self.blDebug:
-                    Domoticz.Log('Heartbeat')
-                self.updateDeviceSelector()
-                self.heartbeatCounter = 1
+                    Domoticz.Log('Polling')
+                response = self.spotCurrent()
+                if response.code == 204 and Devices[SPOTIFYDEVICES].sValue != '0':
+                    self.updateDomoticzDevice(SPOTIFYDEVICES, 0, "0")
+                elif response.code == 200:
+                    resultJson = json.loads(response.read().decode('utf-8'))
+
+                    try:
+                        if resultJson['is_playing'] == False:
+                            self.updateDomoticzDevice(SPOTIFYDEVICES, 0, "0")
+                        else:
+                            lstSelectorLevel = catchDeviceSelectorLvl(resultJson['device']['name'])
+                            self.updateDomoticzDevice(SPOTIFYDEVICES, 1, lstSelectorLevel)
+                                
+                    except ValueError:
+                        try:
+                            if self.blDebug:
+                                Domoticz.Log('Playing on device %s which was unkown, trying to update domoticz device to correctly update playback information.' % (str(resultJson['device']['name'])))
+                            self.updateDeviceSelector()
+                            lstSelectorLevel = catchDeviceSelectorLvl(resultJson['device']['name'])
+                            self.updateDomoticzDevice(SPOTIFYDEVICES, 1, lstSelectorLevel)
+                        except ValueError:
+                            Domoticz.Error("Current playing device not found by domoticz, cant update")
+                        
+
+                    except UnicodeEncodeError:
+                        #jsonresult is empty, meaning nothing is playing
+                        self.updateDomoticzDevice(SPOTIFYDEVICES, 0, "0")
+                        
+                    
+                self.heartbeatCounterPoll = 1
             else:
-                self.heartbeatCounter += 1    
+                self.heartbeatCounterPoll += 1
+            
             return True
+
+    def updateDomoticzDevice(self, idx, nValue, sValue):
+        if Devices[idx].sValue != sValue or Devices[idx].nValue != nValue:
+            if self.blDebug == True:
+                Domoticz.Log('Update for device %s with nValue: %s and sValue %s' % (idx, nValue, sValue))
+            Devices[idx].Update(nValue, sValue)
 
             
 
@@ -412,30 +491,39 @@ class BasePlugin:
             Domoticz.Log("Spotify: onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
             Domoticz.Log("nValue=%s, sValue=%s" % (str(Devices[SPOTIFYDEVICES].nValue), str(Devices[SPOTIFYDEVICES].sValue)))
 
-        try:
-            variables = DomoticzAPI({'type':'command','param':'getuservariables'}, self.blDebug)
-        except Exception as error:
-            Domoticz.Error(error)
-    
-        searchVariable = next((item for item in variables["result"] if item["Name"] == Parameters["Name"] + '-searchTxt'))
-        searchString = searchVariable['Value']
-        Domoticz.Log('Looking for ' + searchString)
-        searchResult = None
+        if Unit == SPOTIFYDEVICES:
+            try:
+                variables = DomoticzAPI({'type':'command','param':'getuservariables'}, self.blDebug)
+            except Exception as error:
+                Domoticz.Error(error)
 
-        if searchString != "":
-            for type in ['artist','track','playlist','album']:
-                if type in searchString:
-                    strippedSearch = searchString.replace(type,'').lstrip()
-                    if self.blDebug:
-                        Domoticz.Log('Search type: ' + type)
-                        Domoticz.Log('Search string: ' + strippedSearch)
-                    searchResult = self.spotSearch(strippedSearch,type)
-                    break
+            if Level == 0:
+                #Spotify turned off
+                self.updateDomoticzDevice(Unit, 0, str(Level))
+                self.spotPause()
+                
+            else:
+                searchVariable = next((item for item in variables["result"] if item["Name"] == Parameters["Name"] + '-searchTxt'))
+                searchString = searchVariable['Value']
+                Domoticz.Log('Looking for ' + searchString)
+                searchResult = None
 
-        if not searchResult:
-            Domoticz.Error("No correct type found in search string, use either artist, track, playlist or album")
-        else:
-            self.spotPlay(searchResult,str(Level))
+                if searchString != "":
+                    for type in ['artist','track','playlist','album']:
+                        if type in searchString:
+                            strippedSearch = searchString.replace(type,'').lstrip()
+                            if self.blDebug:
+                                Domoticz.Log('Search type: ' + type)
+                                Domoticz.Log('Search string: ' + strippedSearch)
+                            searchResult = self.spotSearch(strippedSearch,type)
+                            break
+
+                if not searchResult:
+                    Domoticz.Error("No correct type found in search string, use either artist, track, playlist or album")
+                else:
+                    self.spotPlay(searchResult,str(Level))
+
+            
 
 _plugin = BasePlugin()
 
@@ -453,6 +541,11 @@ def onCommand(Unit, Command, Level, Hue):
 #                         Domoticz helper functions                         #
 #############################################################################
 
+def catchDeviceSelectorLvl(name):
+    lstSelectorNames = Devices[SPOTIFYDEVICES].Options['LevelNames'].split('|')
+    lstSelectorLevel = str(lstSelectorNames.index(name)*10)
+    return lstSelectorLevel
+    
 
 def DomoticzAPI(APICall, blDebug):
     resultJson = None
@@ -483,6 +576,8 @@ def DomoticzAPI(APICall, blDebug):
 
 
 
+
+
 #############################################################################
 #                       Local test helpers                                  #
 #############################################################################
@@ -492,5 +587,9 @@ if local:
 
     #onHeartbeat()
 
-    #onCommand(2,'Set Level',20,'')
+    #onCommand(1,'Off',0,'')
+    onCommand(1,'Set level',20,'')
+
+    
+    
 
