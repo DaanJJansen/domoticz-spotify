@@ -13,18 +13,21 @@ Discussion thread about this plugin: http://www.domoticz.com/forum/viewtopic.php
 * > git clone https://github.com/DaanJJansen/domoticz-spotify spotify (or any other target directory you like)
 * You should now have a ~/domoticz/plugins/spotify directory that contains the plugin.py. In the future you can update the plugin by going into this directory and do a 'git pull'.
 * Restart Domoticz
-* Add the plugin in the Domoticz hardware configuration screen
 * Create a client ID at spotify (https://developer.spotify.com/dashboard/applications)
 	* Enter all fields as desired
-	* Enter IP address on which domoticz can be reached
-	* Entered port nr on which domoticz can be reached
-	* Enter just created client id and client secret into hardware parameters
 	* Go to 'edit setting' and 'http://localhost' as redirect URI
 	* In your webbrowser, navigate to this url: https://accounts.spotify.com/authorize?client_id=[YOURCLIENT_ID]&redirect_uri=http://localhost&response_type=code&scope=user-read-playback-state+user-modify-playback-state
-	* If all go's well, you are being redirect to localhost returning a 404, with a code in the query parameters, copy this code into the hardware parameters
-	* Polling: poll spotify api for current playback state, update domoticz device accordingly
-* Add hardware
-* Add newly created Spotify-device from your device tab
+	* If all go's well, you are being redirect to localhost returning a 404, with a code in the query parameters
+* Add the plugin in the Domoticz hardware configuration screen
+* Update the domoticz spotify hardware parameters:
+	* Domoticz IP Address: Enter IP address on which domoticz can be reached
+	* Port: Entered port nr on which domoticz can be reached
+	* Client ID: client ID from created client at spotify
+	* Client Secret: client secret from just created at spotify
+	* Code: copy the code received from the spotify redirect in the query parameters 
+	* Polling interval: polling time for spotify api to update device with playback state
+
+
 
 ## Usage:
 * Update user variable [name]-searchTxt with the query parameter by using the type of search and the search string. The following types could be used:
