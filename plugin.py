@@ -127,7 +127,7 @@ class BasePlugin:
 
             dictOptions = {"LevelActions": strPlaybackOperations,
                            "LevelNames": strPlaybackOperations,
-                           "LevelOffHidden": "true",
+                           "LevelOffHidden": "false",
                            "SelectorStyle": "0"}
 
             Domoticz.Device(Name="playback", Unit=SPOTIFYPLAYBACK, Used=1, TypeName="Selector Switch", Switchtype=18,
