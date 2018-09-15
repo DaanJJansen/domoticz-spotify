@@ -122,8 +122,7 @@ class BasePlugin:
             self.updateDeviceSelector()
 
     def updateDeviceSelector(self):
-        if self.blDebug:
-            Domoticz.Log("Updating spotify devices selector")
+        Domoticz.Debug("Updating spotify devices selector")
         strSelectorNames = Devices[SPOTIFYDEVICES].Options['LevelNames']
         dictOptions = self.buildDeviceSelector(strSelectorNames)
 
@@ -134,8 +133,7 @@ class BasePlugin:
     def buildDeviceSelector(self, strSelectorNames):
 
         spotDevices = self.spotDevices()
-        if self.blDebug:
-            Domoticz.Log('JSON Returned from spotify listed available devices: ' + str(spotDevices))
+        Domoticz.Debug('JSON Returned from spotify listed available devices: ' + str(spotDevices))
             
         strSelectorActions = ''
         
@@ -159,8 +157,7 @@ class BasePlugin:
             else:
                 self.spotArrDevices.update({str(lstSelectorNames.index(device['name'])*10):device['id']})
 
-        if self.blDebug:
-            Domoticz.Log('Local array listing selector level with deviceids: ' + str(self.spotArrDevices))
+        Domoticz.Debug('Local array listing selector level with deviceids: ' + str(self.spotArrDevices))
                 
 
         dictOptions = {"LevelActions": strSelectorActions,
@@ -218,8 +215,7 @@ class BasePlugin:
                             result = next((item for item in variables["result"] if item["Name"] == intVarName))
                             if intVar in self.spotifyToken:
                                 self.spotifyToken[intVar] = result['Value']
-                            if self.blDebug:
-                                Domoticz.Log(str(result))
+                            Domoticz.Debug(str(result))
                         except:
                             missingVar.append(intVar)   
                 else:
@@ -264,8 +260,7 @@ class BasePlugin:
             response = urllib.request.urlopen(req)
 
             strResponse= response.read().decode('utf-8')
-            if self.blDebug:
-                Domoticz.Log('Spotify response accestoken based on refresh: ' + str(strResponse))
+            Domoticz.Debug('Spotify response accestoken based on refresh: ' + str(strResponse))
                 
             jsonResponse = json.loads(strResponse)
 
@@ -280,8 +275,7 @@ class BasePlugin:
         login = client_id + ':' + client_secret
         base64string = base64.b64encode(login.encode())
         header = {'Authorization': 'Basic ' + base64string.decode('ascii')}
-        if self.blDebug:
-            Domoticz.Log('For basic headers using client_id: %s, client_secret: %s' % (client_id, client_secret))
+        Domoticz.Debug('For basic headers using client_id: %s, client_secret: %s' % (client_id, client_secret))
 
         return header
         
@@ -295,21 +289,18 @@ class BasePlugin:
             data = {'grant_type':'authorization_code',
                     'code':code,
                     'redirect_uri':'http://localhost'}
-            if self.blDebug:
-                Domoticz.Log('Getting tokens using data: %s' % (data))
+            Domoticz.Debug('Getting tokens using data: %s' % (data))
             data = urllib.parse.urlencode(data)
             
             headers = self.returnSpotifyBasicHeader()
-            if self.blDebug:
-                Domoticz.Log('Getting tokens using header: %s' % (headers))
+            Domoticz.Debug('Getting tokens using header: %s' % (headers))
 
             try:
                 req = urllib.request.Request(url, data.encode('ascii'), headers)
                 response = urllib.request.urlopen(req)
 
                 strResponse= response.read().decode('utf-8')
-                if self.blDebug:
-                    Domoticz.Log('Spotify tokens based on authorisation code: ' + str(strResponse))
+                Domoticz.Debug('Spotify tokens based on authorisation code: ' + str(strResponse))
                 jsonResponse = json.loads(strResponse)
                     
 
@@ -343,8 +334,7 @@ class BasePlugin:
 
         
         url = self.spotifyApiUrl + "/search?q=%s&type=%s&market=NL&limit=10" % (urllib.parse.quote(input), type)
-        if self.blDebug:
-            Domoticz.Log('Spotify search url: ' + str(url))
+        Domoticz.Debug('Spotify search url: ' + str(url))
             
         headers = self.spotGetBearerHeader()
 
@@ -354,8 +344,7 @@ class BasePlugin:
         jsonResponse = json.loads(response.read().decode('utf-8'))
         foundItems = jsonResponse['%ss' % type]['items']
 
-        if self.blDebug:
-            Domoticz.Log('First result of spotify search: ' + str(foundItems[0]))
+        Domoticz.Debug('First result of spotify search: ' + str(foundItems[0]))
             
         rsltString = 'Found ' + type + ' ' + foundItems[0]['name']
         if type == 'track':
@@ -400,9 +389,8 @@ class BasePlugin:
             response = urllib.request.urlopen(req)
             
 
-            if self.blDebug == True:
-                Domoticz.Log("Succesfully retrieved current playing state")
-                Domoticz.Log('Retrieved current playing state having code %s' % (response.code))
+            Domoticz.Debug("Succesfully retrieved current playing state")
+            Domoticz.Debug('Retrieved current playing state having code %s' % (response.code))
 
 
             return response
@@ -445,8 +433,7 @@ class BasePlugin:
     def onHeartbeat(self):
         if not self.blError:
             if Parameters["Mode5"] != "0" and self.heartbeatCounterPoll == int(Parameters["Mode5"]):
-                if self.blDebug:
-                    Domoticz.Log('Polling')
+                Domoticz.Debug('Polling')
                 response = self.spotCurrent()
                 if response.code == 204 and Devices[SPOTIFYDEVICES].sValue != '0':
                     self.updateDomoticzDevice(SPOTIFYDEVICES, 0, "0")
@@ -462,8 +449,7 @@ class BasePlugin:
                                 
                     except ValueError:
                         try:
-                            if self.blDebug:
-                                Domoticz.Log('Playing on device %s which was unkown, trying to update domoticz device to correctly update playback information.' % (str(resultJson['device']['name'])))
+                            Domoticz.Debug('Playing on device %s which was unkown, trying to update domoticz device to correctly update playback information.' % (str(resultJson['device']['name'])))
                             self.updateDeviceSelector()
                             lstSelectorLevel = catchDeviceSelectorLvl(resultJson['device']['name'])
                             self.updateDomoticzDevice(SPOTIFYDEVICES, 1, lstSelectorLevel)
@@ -484,16 +470,12 @@ class BasePlugin:
 
     def updateDomoticzDevice(self, idx, nValue, sValue):
         if Devices[idx].sValue != sValue or Devices[idx].nValue != nValue:
-            if self.blDebug == True:
-                Domoticz.Log('Update for device %s with nValue: %s and sValue %s' % (idx, nValue, sValue))
+            Domoticz.Debug('Update for device %s with nValue: %s and sValue %s' % (idx, nValue, sValue))
             Devices[idx].Update(nValue, sValue)
 
-            
-
     def onCommand(self, Unit, Command, Level, Hue):
-        if (self.blDebug ==  True):
-            Domoticz.Log("Spotify: onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
-            Domoticz.Log("nValue=%s, sValue=%s" % (str(Devices[SPOTIFYDEVICES].nValue), str(Devices[SPOTIFYDEVICES].sValue)))
+        Domoticz.Debug("Spotify: onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
+        Domoticz.Debug("nValue=%s, sValue=%s" % (str(Devices[SPOTIFYDEVICES].nValue), str(Devices[SPOTIFYDEVICES].sValue)))
 
         if Unit == SPOTIFYDEVICES:
             try:
@@ -516,9 +498,8 @@ class BasePlugin:
                     for type in ['artist','track','playlist','album']:
                         if type in searchString:
                             strippedSearch = searchString.replace(type,'').lstrip()
-                            if self.blDebug:
-                                Domoticz.Log('Search type: ' + type)
-                                Domoticz.Log('Search string: ' + strippedSearch)
+                            Domoticz.Debug('Search type: ' + type)
+                            Domoticz.Debug('Search string: ' + strippedSearch)
                             searchResult = self.spotSearch(strippedSearch,type)
                             break
 
@@ -559,13 +540,13 @@ def DomoticzAPI(APICall, blDebug):
     try:
         req = urllib.request.Request(url)
         if Parameters["Username"] != "":
-            Domoticz.Debug("Add authentification for user {}".format(Parameters["Username"]))
+            Domoticz.Debug("Add authentification for user: {}".format(Parameters["Username"]))
             credentials = ('%s:%s' % (Parameters["Username"], Parameters["Password"]))
             encoded_credentials = base64.b64encode(credentials.encode('ascii'))
             req.add_header('Authorization', 'Basic %s' % encoded_credentials.decode("ascii"))
         else:
             if Parameters["Mode4"] != "":
-                Domoticz.Debug("Add authentification using encoded credentials {}".format(Parameters["Mode4"]))
+                Domoticz.Debug("Add authentification using encoded credentials: {}".format(Parameters["Mode4"]))
                 encoded_credentials = Parameters["Mode4"]
                 req.add_header('Authorization', 'Basic %s' % encoded_credentials)
 
