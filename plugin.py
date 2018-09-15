@@ -55,6 +55,7 @@ import time
 
 # DEFINES
 SPOTIFYDEVICES = 1
+SPOTIFYPLAYBACK = 2
 
 
 #############################################################################
@@ -97,6 +98,7 @@ class BasePlugin:
                 break
 
         self.checkDevices()
+        self.checkPlayback()
 
         Domoticz.Heartbeat(30)
 
@@ -113,6 +115,23 @@ class BasePlugin:
                             Options=dictOptions, Image=8).Create()
         else:
             self.updateDeviceSelector()
+
+    def checkPlayback(self):
+        Domoticz.Log("Checking if playback controller exist")
+
+        if SPOTIFYPLAYBACK not in Devices:
+            Domoticz.Log("Spotify playback controller does not exist, creating device")
+
+            strPlaybackOperations = 'Off|Play|Pause|Next|Previous'
+            dictOptions = {"LevelActions": strPlaybackOperations,
+                           "LevelNames": strPlaybackOperations,
+                           "LevelOffHidden": "false",
+                           "SelectorStyle": "0"}
+
+            Domoticz.Device(Name="playback", Unit=SPOTIFYPLAYBACK, Used=1, TypeName="Selector Switch", Switchtype=18,
+                            Options=dictOptions, Image=8).Create()
+        else:
+            Domoticz.Debug("Playback controller already exist")
 
     def updateDeviceSelector(self):
         Domoticz.Debug("Updating spotify devices selector")
