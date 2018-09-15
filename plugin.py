@@ -73,15 +73,12 @@ class BasePlugin:
         self.spotifyApiUrl = "https://api.spotify.com/v1"
         self.heartbeatCounterPoll = 1
         self.blError = False
-        self.blDebug = False
-        
 
     def onStart(self):
 
         
 
         if Parameters["Mode6"] == "Debug":
-            self.blDebug = True
             Domoticz.Debugging(1)
 
         for var in ['Mode1','Mode2','Mode3']:
