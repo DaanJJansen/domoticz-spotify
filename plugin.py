@@ -70,6 +70,7 @@ class BasePlugin:
         self.spotifySearchParam = ["searchTxt"]
         self.tokenexpired = 3600
         self.spotArrDevices = {}
+        self.spotPlaybackSelectorMap = {}
         self.spotifyAccountUrl = "https://accounts.spotify.com/api/token"
         self.spotifyApiUrl = "https://api.spotify.com/v1"
         self.heartbeatCounterPoll = 1
@@ -130,6 +131,11 @@ class BasePlugin:
 
             Domoticz.Device(Name="playback", Unit=SPOTIFYPLAYBACK, Used=1, TypeName="Selector Switch", Switchtype=18,
                             Options=dictOptions, Image=8).Create()
+
+            dictValue = 0
+            for item in strPlaybackOperations.split('|'):
+                self.spotPlaybackSelectorMap[dictValue] = item
+                dictValue = dictValue + 10
         else:
             Domoticz.Debug("Playback controller already exist")
 
@@ -418,6 +424,23 @@ class BasePlugin:
             else:
                 Domoticz.Error("Unkown error, msg: " + str(err.msg))
 
+    def spotNext(self):
+        try:
+            url = self.spotifyApiUrl + "/me/player/next"
+            headers = self.spotGetBearerHeader()
+
+            req = urllib.request.Request(url, headers=headers, method='POST')
+            response = urllib.request.urlopen(req)
+            Domoticz.Log("Succesfully change to next track")
+
+        except urllib.error.HTTPError as err:
+            if err.code == 403:
+                Domoticz.Error("User non premium")
+            elif err.code == 400:
+                Domoticz.Error("Device id not found")
+            else:
+                Domoticz.Error("Unkown error, msg: " + str(err.msg))
+
     def onHeartbeat(self):
         if not self.blError:
             if Parameters["Mode5"] != "0" and self.heartbeatCounterPoll == int(Parameters["Mode5"]):
@@ -509,26 +532,28 @@ class BasePlugin:
 
         elif Unit == SPOTIFYPLAYBACK:
             if (action == "On"):
-                self.spotPlay(str(Level))
+                # TODO: need to add a way to know the current device
+                # self.spotPlay(str(Level))
+                pass
 
             elif (action == "Set"):
                 current_state = self.spotCurrent()
                 is_playing = current_state['is_playing']
                 if not is_playing:
-                    self.spotPlay(str(Level))
+                    # TODO: need to add a way to know the current device
+                    # self.spotPlay(str(Level))
+                    pass
 
-                if self.selectorMap[Level] == "Play":
-                    self.start_play()
-                    self.Command = "Play"
-                elif self.selectorMap[Level] == "Pause":
-                    self.pause_play()
-                    self.Command = "Pause"
-                elif self.selectorMap[Level] == "Next":
+                if self.spotPlaybackSelectorMap[Level] == "Play":
+                    # TODO: need to add a way to know the current device
+                    # self.spotPlay(str(Level))
+                    pass
+                elif self.spotPlaybackSelectorMap[Level] == "Pause":
+                    self.spotPause()
+                elif self.spotPlaybackSelectorMap[Level] == "Next":
                     self.next_song()
-                    self.Command = "Next"
-                elif self.selectorMap[Level] == "Previous":
+                elif self.spotPlaybackSelectorMap[Level] == "Previous":
                     self.previous_song()
-                    self.Command = "Previous"
 
             elif (action == "Off"):
                 # Spotify turned off
