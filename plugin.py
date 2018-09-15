@@ -387,7 +387,7 @@ class BasePlugin:
         except urllib.error.HTTPError as err:
             Domoticz.Error("Unkown error {error}, msg: {message}".format(error=err.code, message=err.msg))
 
-    def spotPlay(self, input, deviceLvl):
+    def spotPlay(self, deviceLvl, media_to_play=None):
         try:
 
             if deviceLvl not in self.spotArrDevices:
@@ -398,8 +398,10 @@ class BasePlugin:
             device = self.spotArrDevices[deviceLvl]
             url = self.spotifyApiUrl + "/me/player/play?device_id=" + device
             headers = self.spotGetBearerHeader()
-
-            data = json.dumps(input).encode('utf8')
+            if media_to_play:
+                data = json.dumps(media_to_play).encode('utf8')
+            else:
+                data = ""
 
             req = urllib.request.Request(url, headers=headers, data=data, method='PUT')
             response = urllib.request.urlopen(req)
@@ -468,6 +470,9 @@ class BasePlugin:
         Domoticz.Debug(
             "nValue={device_value}, sValue={value_type}".format(
                 device_value=str(Devices[SPOTIFYDEVICES].nValue), value_type=str(Devices[SPOTIFYDEVICES].sValue)))
+        Command = Command.strip()
+        action, sep, params = Command.partition(' ')
+        action = action.capitalize()
 
         if Unit == SPOTIFYDEVICES:
             try:
@@ -500,7 +505,37 @@ class BasePlugin:
                     Domoticz.Error(
                         "No correct type found in search string, use either artist, track, playlist or album")
                 else:
-                    self.spotPlay(searchResult, str(Level))
+                    self.spotPlay(str(Level), searchResult)
+
+        elif Unit == SPOTIFYPLAYBACK:
+            if (action == "On"):
+                self.spotPlay(str(Level))
+
+            elif (action == "Set"):
+                current_state = self.spotCurrent()
+                is_playing = current_state['is_playing']
+                if not is_playing:
+                    self.spotPlay(str(Level))
+
+                if self.selectorMap[Level] == "Play":
+                    self.start_play()
+                    self.Command = "Play"
+                elif self.selectorMap[Level] == "Pause":
+                    self.pause_play()
+                    self.Command = "Pause"
+                elif self.selectorMap[Level] == "Next":
+                    self.next_song()
+                    self.Command = "Next"
+                elif self.selectorMap[Level] == "Previous":
+                    self.previous_song()
+                    self.Command = "Previous"
+
+            elif (action == "Off"):
+                # Spotify turned off
+                self.updateDomoticzDevice(Unit, 0, str(Level))
+                self.spotPause()
+
+
 
 
 _plugin = BasePlugin()
