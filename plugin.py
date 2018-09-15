@@ -120,10 +120,11 @@ class BasePlugin:
     def checkPlayback(self):
         Domoticz.Log("Checking if playback controller exist")
 
+        strPlaybackOperations = 'Off|Play|Pause|Next|Previous'
+
         if SPOTIFYPLAYBACK not in Devices:
             Domoticz.Log("Spotify playback controller does not exist, creating device")
 
-            strPlaybackOperations = 'Off|Play|Pause|Next|Previous'
             dictOptions = {"LevelActions": strPlaybackOperations,
                            "LevelNames": strPlaybackOperations,
                            "LevelOffHidden": "false",
@@ -132,12 +133,13 @@ class BasePlugin:
             Domoticz.Device(Name="playback", Unit=SPOTIFYPLAYBACK, Used=1, TypeName="Selector Switch", Switchtype=18,
                             Options=dictOptions, Image=8).Create()
 
-            dictValue = 0
-            for item in strPlaybackOperations.split('|'):
-                self.spotPlaybackSelectorMap[dictValue] = item
-                dictValue = dictValue + 10
         else:
             Domoticz.Debug("Playback controller already exist")
+
+        dictValue = 0
+        for item in strPlaybackOperations.split('|'):
+            self.spotPlaybackSelectorMap[dictValue] = item
+            dictValue = dictValue + 10
 
     def updateDeviceSelector(self):
         Domoticz.Debug("Updating spotify devices selector")
@@ -452,7 +454,7 @@ class BasePlugin:
 
         except urllib.error.HTTPError as err:
             if err.code == 403:
-                Domoticz.Error("User non premium")
+                Domoticz.Error("Can't use previous option in this state - maybe radio or first song")
             elif err.code == 400:
                 Domoticz.Error("Device id not found")
             else:
@@ -555,12 +557,13 @@ class BasePlugin:
 
             elif (action == "Set"):
                 current_state = self.spotCurrent()
-                is_playing = current_state['is_playing']
+                resultJson = json.loads(current_state.read().decode('utf-8'))
+                is_playing = resultJson['is_playing']
                 if not is_playing:
                     # TODO: need to add a way to know the current device
                     # self.spotPlay(str(Level))
                     pass
-
+                Domoticz.Log("playback selector map: {}".format(self.spotPlaybackSelectorMap))
                 if self.spotPlaybackSelectorMap[Level] == "Play":
                     # TODO: need to add a way to know the current device
                     # self.spotPlay(str(Level))
