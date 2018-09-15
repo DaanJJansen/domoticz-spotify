@@ -395,15 +395,15 @@ class BasePlugin:
         except urllib.error.HTTPError as err:
             Domoticz.Error("Unkown error {error}, msg: {message}".format(error=err.code, message=err.msg))
 
-    def spotPlay(self, deviceLvl=None, media_to_play=None):
+    def spotPlay(self, device_level_index=None, media_to_play=None):
         try:
-            if deviceLvl:
-                if deviceLvl not in self.spotArrDevices:
+            if device_level_index:
+                if device_level_index not in self.spotArrDevices:
                     self.updateDeviceSelector()
-                    if deviceLvl not in self.spotArrDevices:
+                    if device_level_index not in self.spotArrDevices:
                         raise urllib.error.HTTPError(url='', msg='', hdrs='', fp='', code=404)
 
-                device = self.spotArrDevices[deviceLvl]
+                device = self.spotArrDevices[device_level_index]
                 url = self.spotifyApiUrl + "/me/player/play?device_id=" + device
             else:
                 url = self.spotifyApiUrl + "/me/player/play"
@@ -417,8 +417,8 @@ class BasePlugin:
                 req = urllib.request.Request(url, headers=headers, method='PUT')
 
             response = urllib.request.urlopen(req)
-            if deviceLvl:
-                self.updateDomoticzDevice(SPOTIFYDEVICES, 1, str(deviceLvl))
+            if device_level_index:
+                self.updateDomoticzDevice(SPOTIFYDEVICES, 1, str(device_level_index))
             Domoticz.Log("Succesfully started playback")
 
         except urllib.error.HTTPError as err:
@@ -560,9 +560,9 @@ class BasePlugin:
                 pass
 
             elif (action == "Set"):
-                current_state = self.spotCurrent()
-                resultJson = json.loads(current_state.read().decode('utf-8'))
-                is_playing = resultJson['is_playing']
+                current_state_response = self.spotCurrent()
+                current_state_json = json.loads(current_state_response.read().decode('utf-8'))
+                is_playing = current_state_json['is_playing']
                 if not is_playing:
                     self.spotPlay()
                 if self.spotPlaybackSelectorMap[Level] == "Play":
