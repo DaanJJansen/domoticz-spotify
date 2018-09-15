@@ -441,6 +441,23 @@ class BasePlugin:
             else:
                 Domoticz.Error("Unkown error, msg: " + str(err.msg))
 
+    def spotPrevious(self):
+        try:
+            url = self.spotifyApiUrl + "/me/player/previous"
+            headers = self.spotGetBearerHeader()
+
+            req = urllib.request.Request(url, headers=headers, method='POST')
+            response = urllib.request.urlopen(req)
+            Domoticz.Log("Succesfully change to previous track")
+
+        except urllib.error.HTTPError as err:
+            if err.code == 403:
+                Domoticz.Error("User non premium")
+            elif err.code == 400:
+                Domoticz.Error("Device id not found")
+            else:
+                Domoticz.Error("Unkown error, msg: " + str(err.msg))
+
     def onHeartbeat(self):
         if not self.blError:
             if Parameters["Mode5"] != "0" and self.heartbeatCounterPoll == int(Parameters["Mode5"]):
@@ -551,9 +568,9 @@ class BasePlugin:
                 elif self.spotPlaybackSelectorMap[Level] == "Pause":
                     self.spotPause()
                 elif self.spotPlaybackSelectorMap[Level] == "Next":
-                    self.next_song()
+                    self.spotNext()
                 elif self.spotPlaybackSelectorMap[Level] == "Previous":
-                    self.previous_song()
+                    self.spotPrevious()
 
             elif (action == "Off"):
                 # Spotify turned off
