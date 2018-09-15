@@ -395,17 +395,20 @@ class BasePlugin:
         except urllib.error.HTTPError as err:
             Domoticz.Error("Unkown error {error}, msg: {message}".format(error=err.code, message=err.msg))
 
-    def spotPlay(self, deviceLvl, media_to_play=None):
+    def spotPlay(self, deviceLvl=None, media_to_play=None):
         try:
-
-            if deviceLvl not in self.spotArrDevices:
-                self.updateDeviceSelector()
+            if deviceLvl:
                 if deviceLvl not in self.spotArrDevices:
-                    raise urllib.error.HTTPError(url='', msg='', hdrs='', fp='', code=404)
+                    self.updateDeviceSelector()
+                    if deviceLvl not in self.spotArrDevices:
+                        raise urllib.error.HTTPError(url='', msg='', hdrs='', fp='', code=404)
 
-            device = self.spotArrDevices[deviceLvl]
-            url = self.spotifyApiUrl + "/me/player/play?device_id=" + device
+                device = self.spotArrDevices[deviceLvl]
+                url = self.spotifyApiUrl + "/me/player/play?device_id=" + device
+            else:
+                url = self.spotifyApiUrl + "/me/player/play"
             headers = self.spotGetBearerHeader()
+
             if media_to_play:
                 data = json.dumps(media_to_play).encode('utf8')
             else:
@@ -413,7 +416,8 @@ class BasePlugin:
 
             req = urllib.request.Request(url, headers=headers, data=data, method='PUT')
             response = urllib.request.urlopen(req)
-            self.updateDomoticzDevice(SPOTIFYDEVICES, 1, str(deviceLvl))
+            if deviceLvl:
+                self.updateDomoticzDevice(SPOTIFYDEVICES, 1, str(deviceLvl))
             Domoticz.Log("Succesfully started playback")
 
         except urllib.error.HTTPError as err:
@@ -551,8 +555,7 @@ class BasePlugin:
 
         elif Unit == SPOTIFYPLAYBACK:
             if (action == "On"):
-                # TODO: need to add a way to know the current device
-                # self.spotPlay(str(Level))
+                self.spotPlay()
                 pass
 
             elif (action == "Set"):
@@ -560,14 +563,10 @@ class BasePlugin:
                 resultJson = json.loads(current_state.read().decode('utf-8'))
                 is_playing = resultJson['is_playing']
                 if not is_playing:
-                    # TODO: need to add a way to know the current device
-                    # self.spotPlay(str(Level))
-                    pass
+                    self.spotPlay()
                 Domoticz.Log("playback selector map: {}".format(self.spotPlaybackSelectorMap))
                 if self.spotPlaybackSelectorMap[Level] == "Play":
-                    # TODO: need to add a way to know the current device
-                    # self.spotPlay(str(Level))
-                    pass
+                    self.spotPlay()
                 elif self.spotPlaybackSelectorMap[Level] == "Pause":
                     self.spotPause()
                 elif self.spotPlaybackSelectorMap[Level] == "Next":
