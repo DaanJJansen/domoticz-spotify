@@ -9,7 +9,9 @@
 <plugin key="Spotify" name="Spotify Plugin" author="djj" version="0.2" wikilink="https://github.com/DaanJJansen/domoticz-spotify" externallink="https://api.spotify.com">
     <params>
         <param field="Address" label="Domoticz IP Address" width="200px" required="true" default="localhost"/>
-        <param field="Port" label="Port" width="40px" required="true" default="8080"/>
+        <param field="Port" label="Domoticz Port" width="40px" required="true" default="8080"/>
+        <param field="Username" label="Domoticz Username" width="200px" required="false" default=""/>
+        <param field="Password" label="Domoticz Password" width="200px" required="false" default=""/>
         <param field="Mode1" label="Client ID" width="200px" required="true" default=""/>
         <param field="Mode2" label="Client Secret" width="200px" required="true" default=""/>
         <param field="Mode3" label="Code" width="400px" required="true" default=""/>
