@@ -407,14 +407,15 @@ class BasePlugin:
                 url = self.spotifyApiUrl + "/me/player/play?device_id=" + device
             else:
                 url = self.spotifyApiUrl + "/me/player/play"
+
             headers = self.spotGetBearerHeader()
 
             if media_to_play:
                 data = json.dumps(media_to_play).encode('utf8')
+                req = urllib.request.Request(url, headers=headers, data=data, method='PUT')
             else:
-                data = ""
+                req = urllib.request.Request(url, headers=headers, method='PUT')
 
-            req = urllib.request.Request(url, headers=headers, data=data, method='PUT')
             response = urllib.request.urlopen(req)
             if deviceLvl:
                 self.updateDomoticzDevice(SPOTIFYDEVICES, 1, str(deviceLvl))
@@ -564,9 +565,11 @@ class BasePlugin:
                 is_playing = resultJson['is_playing']
                 if not is_playing:
                     self.spotPlay()
-                Domoticz.Log("playback selector map: {}".format(self.spotPlaybackSelectorMap))
                 if self.spotPlaybackSelectorMap[Level] == "Play":
-                    self.spotPlay()
+                    if not is_playing:
+                        self.spotPlay()
+                    else:
+                        Domoticz.Log("Spotify already playing")
                 elif self.spotPlaybackSelectorMap[Level] == "Pause":
                     self.spotPause()
                 elif self.spotPlaybackSelectorMap[Level] == "Next":
