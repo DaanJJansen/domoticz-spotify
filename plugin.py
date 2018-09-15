@@ -202,7 +202,7 @@ class BasePlugin:
 
     def getUserVar(self):
         try:
-            variables = DomoticzAPI({'type':'command','param':'getuservariables'}, self.blDebug)
+            variables = DomoticzAPI({'type':'command','param':'getuservariables'})
         
             if variables:
                 valuestring = ""
@@ -226,7 +226,7 @@ class BasePlugin:
                     strMissingVar = ','.join(missingVar)
                     Domoticz.Log("User Variable {} does not exist. Creation requested".format(strMissingVar))
                     for variable in missingVar:
-                        DomoticzAPI({"type":"command","param":"saveuservariable","vname":Parameters["Name"] + '-' + variable,"vtype":"2","vvalue":""}, self.blDebug)
+                        DomoticzAPI({"type":"command","param":"saveuservariable","vname":Parameters["Name"] + '-' + variable,"vtype":"2","vvalue":""})
                 
                 return True
             else:
@@ -242,7 +242,7 @@ class BasePlugin:
         try:
             for intVar in self.spotifyToken:
                 intVarName = Parameters["Name"] + '-' + intVar
-                DomoticzAPI({"type":"command","param":"updateuservariable","vname":intVarName,"vtype":"2","vvalue":str(self.spotifyToken[intVar])}, self.blDebug)
+                DomoticzAPI({"type":"command","param":"updateuservariable","vname":intVarName,"vtype":"2","vvalue":str(self.spotifyToken[intVar])})
         except Exception as error:
             Domoticz.Error(str(error))
 
@@ -479,7 +479,7 @@ class BasePlugin:
 
         if Unit == SPOTIFYDEVICES:
             try:
-                variables = DomoticzAPI({'type':'command','param':'getuservariables'}, self.blDebug)
+                variables = DomoticzAPI({'type':'command','param':'getuservariables'})
             except Exception as error:
                 Domoticz.Error(error)
 
@@ -532,11 +532,10 @@ def catchDeviceSelectorLvl(name):
     return lstSelectorLevel
     
 
-def DomoticzAPI(APICall, blDebug):
+def DomoticzAPI(APICall):
     resultJson = None
     url = "http://{}:{}/json.htm?{}".format(Parameters["Address"], Parameters["Port"], urllib.parse.urlencode(APICall, safe="&="))
-    if blDebug:
-        Domoticz.Log("Calling domoticz API: {}".format(url))
+    Domoticz.Debug("Calling domoticz API: {}".format(url))
     try:
         req = urllib.request.Request(url)
         if Parameters["Username"] != "":
