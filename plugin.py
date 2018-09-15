@@ -82,6 +82,7 @@ class BasePlugin:
 
         if Parameters["Mode6"] == "Debug":
             self.blDebug = True
+            Domoticz.Debugging(1)
 
         for var in ['Mode1','Mode2','Mode3']:
             if Parameters[var] == "":
