@@ -12,6 +12,7 @@
         <param field="Port" label="Domoticz Port" width="40px" required="true" default="8080"/>
         <param field="Username" label="Domoticz Username" width="200px" required="false" default=""/>
         <param field="Password" label="Domoticz Password" width="200px" required="false" default=""/>
+        <param field="Mode4" label="Domoticz encoded credentials" width="200px" required="false" default=""/>
         <param field="Mode1" label="Client ID" width="200px" required="true" default=""/>
         <param field="Mode2" label="Client Secret" width="200px" required="true" default=""/>
         <param field="Mode3" label="Code" width="400px" required="true" default=""/>
@@ -561,6 +562,11 @@ def DomoticzAPI(APICall, blDebug):
             credentials = ('%s:%s' % (Parameters["Username"], Parameters["Password"]))
             encoded_credentials = base64.b64encode(credentials.encode('ascii'))
             req.add_header('Authorization', 'Basic %s' % encoded_credentials.decode("ascii"))
+        else:
+            if Parameters["Mode4"] != "":
+                Domoticz.Debug("Add authentification using encoded credentials {}".format(Parameters["Mode4"]))
+                encoded_credentials = Parameters["Mode4"]
+                req.add_header('Authorization', 'Basic %s' % encoded_credentials)
 
         response = urllib.request.urlopen(req)
 
