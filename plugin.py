@@ -120,14 +120,14 @@ class BasePlugin:
     def checkPlayback(self):
         Domoticz.Log("Checking if playback controller exist")
 
-        strPlaybackOperations = 'Off|Play|Pause|Next|Previous'
+        strPlaybackOperations = 'Off|Play|Pause|Previous|Next'
 
         if SPOTIFYPLAYBACK not in Devices:
             Domoticz.Log("Spotify playback controller does not exist, creating device")
 
             dictOptions = {"LevelActions": strPlaybackOperations,
                            "LevelNames": strPlaybackOperations,
-                           "LevelOffHidden": "false",
+                           "LevelOffHidden": "true",
                            "SelectorStyle": "0"}
 
             Domoticz.Device(Name="playback", Unit=SPOTIFYPLAYBACK, Used=1, TypeName="Selector Switch", Switchtype=18,
