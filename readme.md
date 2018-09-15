@@ -24,7 +24,8 @@ Discussion thread about this plugin: http://www.domoticz.com/forum/viewtopic.php
 	* Port: Entered port nr on which domoticz can be reached
 	* Username: Domoticz username (Optional)
 	* Password: Domoticz Password (Optional)
-	* Encoded credentials: Domoticz encoded credentials base64 in the format ['user:password'] (Optional)
+	* Encoded credentials: Domoticz encoded credentials base64 in the format 'user:password' (Optional)
+	    * You can encode your credentials here: https://codebeautify.org/base64-encode put there USER:PASSWORD and enter what you get to the domoticz server
 	    * If enter username and encoded credentials, the username will take effect
 	* Client ID: client ID from created client at spotify
 	* Client Secret: client secret from just created at spotify
