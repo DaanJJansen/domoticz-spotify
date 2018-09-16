@@ -22,6 +22,11 @@ Discussion thread about this plugin: http://www.domoticz.com/forum/viewtopic.php
 * Update the domoticz spotify hardware parameters:
 	* Domoticz IP Address: Enter IP address on which domoticz can be reached
 	* Port: Entered port nr on which domoticz can be reached
+	* Username: Domoticz username (Optional)
+	* Password: Domoticz Password (Optional)
+	* Encoded credentials: Domoticz encoded credentials base64 in the format 'user:password' (Optional)
+	    * You can encode your credentials here: https://codebeautify.org/base64-encode put there USER:PASSWORD and enter what you get to the domoticz server
+	    * If enter username and encoded credentials, the username will take effect
 	* Client ID: client ID from created client at spotify
 	* Client Secret: client secret from just created at spotify
 	* Code: copy the code received from the spotify redirect in the query parameters 
@@ -38,6 +43,9 @@ Discussion thread about this plugin: http://www.domoticz.com/forum/viewtopic.php
 * On the spotify-device select device on which playback needs to be started
 
 ## History:
+**version 0.3**
+- Add Domoticz server authentication option
+
 **version 0.2**
 - Fixed bug of not updating domoticz selector device
 - Add Off/Pause functionality
