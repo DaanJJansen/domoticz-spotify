@@ -206,7 +206,7 @@ class BasePlugin:
                     strMissingVar = ','.join(missingVar)
                     Domoticz.Log("User Variable {} does not exist. Creation requested".format(strMissingVar))
                     for variable in missingVar:
-                        DomoticzAPI({"type": "command", "param": "saveuservariable",
+                        DomoticzAPI({"type": "command", "param": "adduservariable",
                                      "vname": Parameters["Name"] + '-' + variable, "vtype": "2", "vvalue": ""})
 
                 return True
