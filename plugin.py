@@ -55,6 +55,7 @@ import time
 
 # DEFINES
 SPOTIFYDEVICES = 1
+SPOTIFYPLAYBACK = 2
 
 
 #############################################################################
@@ -69,6 +70,7 @@ class BasePlugin:
         self.spotifySearchParam = ["searchTxt"]
         self.tokenexpired = 3600
         self.spotArrDevices = {}
+        self.spotPlaybackSelectorMap = {}
         self.spotifyAccountUrl = "https://accounts.spotify.com/api/token"
         self.spotifyApiUrl = "https://api.spotify.com/v1"
         self.heartbeatCounterPoll = 1
@@ -97,6 +99,7 @@ class BasePlugin:
                 break
 
         self.checkDevices()
+        self.checkPlayback()
 
         Domoticz.Heartbeat(30)
 
@@ -113,6 +116,30 @@ class BasePlugin:
                             Options=dictOptions, Image=8).Create()
         else:
             self.updateDeviceSelector()
+
+    def checkPlayback(self):
+        Domoticz.Log("Checking if playback controller exist")
+
+        strPlaybackOperations = 'Off|Play|Pause|Previous|Next'
+
+        if SPOTIFYPLAYBACK not in Devices:
+            Domoticz.Log("Spotify playback controller does not exist, creating device")
+
+            dictOptions = {"LevelActions": strPlaybackOperations,
+                           "LevelNames": strPlaybackOperations,
+                           "LevelOffHidden": "false",
+                           "SelectorStyle": "0"}
+
+            Domoticz.Device(Name="playback", Unit=SPOTIFYPLAYBACK, Used=1, TypeName="Selector Switch", Switchtype=18,
+                            Options=dictOptions, Image=8).Create()
+
+        else:
+            Domoticz.Debug("Playback controller already exist")
+
+        dictValue = 0
+        for item in strPlaybackOperations.split('|'):
+            self.spotPlaybackSelectorMap[dictValue] = item
+            dictValue = dictValue + 10
 
     def updateDeviceSelector(self):
         Domoticz.Debug("Updating spotify devices selector")
@@ -368,23 +395,30 @@ class BasePlugin:
         except urllib.error.HTTPError as err:
             Domoticz.Error("Unkown error {error}, msg: {message}".format(error=err.code, message=err.msg))
 
-    def spotPlay(self, input, deviceLvl):
+    def spotPlay(self, device_level_index=None, media_to_play=None):
         try:
+            if device_level_index:
+                if device_level_index not in self.spotArrDevices:
+                    self.updateDeviceSelector()
+                    if device_level_index not in self.spotArrDevices:
+                        raise urllib.error.HTTPError(url='', msg='', hdrs='', fp='', code=404)
 
-            if deviceLvl not in self.spotArrDevices:
-                self.updateDeviceSelector()
-                if deviceLvl not in self.spotArrDevices:
-                    raise urllib.error.HTTPError(url='', msg='', hdrs='', fp='', code=404)
+                device = self.spotArrDevices[device_level_index]
+                url = self.spotifyApiUrl + "/me/player/play?device_id=" + device
+            else:
+                url = self.spotifyApiUrl + "/me/player/play"
 
-            device = self.spotArrDevices[deviceLvl]
-            url = self.spotifyApiUrl + "/me/player/play?device_id=" + device
             headers = self.spotGetBearerHeader()
 
-            data = json.dumps(input).encode('utf8')
+            if media_to_play:
+                data = json.dumps(media_to_play).encode('utf8')
+                req = urllib.request.Request(url, headers=headers, data=data, method='PUT')
+            else:
+                req = urllib.request.Request(url, headers=headers, method='PUT')
 
-            req = urllib.request.Request(url, headers=headers, data=data, method='PUT')
             response = urllib.request.urlopen(req)
-            self.updateDomoticzDevice(SPOTIFYDEVICES, 1, str(deviceLvl))
+            if device_level_index:
+                self.updateDomoticzDevice(SPOTIFYDEVICES, 1, str(device_level_index))
             Domoticz.Log("Succesfully started playback")
 
         except urllib.error.HTTPError as err:
@@ -394,6 +428,40 @@ class BasePlugin:
                 Domoticz.Error("Error playback, right scope requested?")
             elif err.code == 404:
                 Domoticz.Error("Device not found, went offline?")
+            else:
+                Domoticz.Error("Unkown error, msg: " + str(err.msg))
+
+    def spotNext(self):
+        try:
+            url = self.spotifyApiUrl + "/me/player/next"
+            headers = self.spotGetBearerHeader()
+
+            req = urllib.request.Request(url, headers=headers, method='POST')
+            response = urllib.request.urlopen(req)
+            Domoticz.Log("Succesfully change to next track")
+
+        except urllib.error.HTTPError as err:
+            if err.code == 403:
+                Domoticz.Error("User non premium")
+            elif err.code == 400:
+                Domoticz.Error("Device id not found")
+            else:
+                Domoticz.Error("Unkown error, msg: " + str(err.msg))
+
+    def spotPrevious(self):
+        try:
+            url = self.spotifyApiUrl + "/me/player/previous"
+            headers = self.spotGetBearerHeader()
+
+            req = urllib.request.Request(url, headers=headers, method='POST')
+            response = urllib.request.urlopen(req)
+            Domoticz.Log("Succesfully change to previous track")
+
+        except urllib.error.HTTPError as err:
+            if err.code == 403:
+                Domoticz.Error("Can't use previous option in this state - maybe radio or first song")
+            elif err.code == 400:
+                Domoticz.Error("Device id not found")
             else:
                 Domoticz.Error("Unkown error, msg: " + str(err.msg))
 
@@ -449,6 +517,9 @@ class BasePlugin:
         Domoticz.Debug(
             "nValue={device_value}, sValue={value_type}".format(
                 device_value=str(Devices[SPOTIFYDEVICES].nValue), value_type=str(Devices[SPOTIFYDEVICES].sValue)))
+        Command = Command.strip()
+        action, sep, params = Command.partition(' ')
+        action = action.capitalize()
 
         if Unit == SPOTIFYDEVICES:
             try:
@@ -481,7 +552,37 @@ class BasePlugin:
                     Domoticz.Error(
                         "No correct type found in search string, use either artist, track, playlist or album")
                 else:
-                    self.spotPlay(searchResult, str(Level))
+                    self.spotPlay(str(Level), searchResult)
+
+        elif Unit == SPOTIFYPLAYBACK:
+            if (action == "On"):
+                self.spotPlay()
+                pass
+
+            elif (action == "Set"):
+                current_state_response = self.spotCurrent()
+                current_state_json = json.loads(current_state_response.read().decode('utf-8'))
+                is_playing = current_state_json['is_playing']
+                if not is_playing:
+                    self.spotPlay()
+                if self.spotPlaybackSelectorMap[Level] == "Play":
+                    if not is_playing:
+                        self.spotPlay()
+                    else:
+                        Domoticz.Log("Spotify already playing")
+                elif self.spotPlaybackSelectorMap[Level] == "Pause":
+                    self.spotPause()
+                elif self.spotPlaybackSelectorMap[Level] == "Next":
+                    self.spotNext()
+                elif self.spotPlaybackSelectorMap[Level] == "Previous":
+                    self.spotPrevious()
+
+            elif (action == "Off"):
+                # Spotify turned off
+                self.updateDomoticzDevice(Unit, 0, str(Level))
+                self.spotPause()
+
+
 
 
 _plugin = BasePlugin()

@@ -41,8 +41,12 @@ Discussion thread about this plugin: http://www.domoticz.com/forum/viewtopic.php
 	* album --> find album, eg searchTxt: 'album Ten'. Will play album 10 by Pearl Jam
 	* playlist --> find playlist, eg searchTxt: 'playlist discover weekly'. Will play the complete playlist for you.
 * On the spotify-device select device on which playback needs to be started
+* On the spotify-playback select command to control the current played track
 
 ## History:
+**version 0.4**
+- Add Spotify playback selector to control the current track played (next track, previous track, play, pause)
+
 **version 0.3**
 - Add Domoticz server authentication option
 
